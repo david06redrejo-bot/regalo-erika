@@ -2,135 +2,92 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import os
-import base64
 import random
 
 # --- A. CONFIGURACIÓN E INICIALIZACIÓN ---
 st.set_page_config(page_title="SYSTEM LOCKED // PROTOCOL MARCH", page_icon="🔒", layout="centered")
 
-# Función para cargar imágenes y convertirlas a Base64
-def get_base64_images(folder_path):
-    images_b64 = []
-    if os.path.exists(folder_path):
-        for filename in os.listdir(folder_path):
-            if filename.lower().endswith(('.png', '.jpg', '.jpeg', '.gif')):
-                file_path = os.path.join(folder_path, filename)
-                with open(file_path, "rb") as image_file:
-                    encoded = base64.b64encode(image_file.read()).decode()
-                    images_b64.append(f"data:image/{filename.split('.')[-1]};base64,{encoded}")
-    return images_b64
-
-# Cargar imágenes de fondo
-background_images = get_base64_images("pairImages")
-
-# Generar CSS dinámico para el fondo
-if background_images:
-    # Creamos una animación simple que cambia el fondo si hay imágenes
-    # Si hay muchas, podemos hacer un carrusel. Para v1, usaremos una aleatoria cada vez
-    # O un ciclo CSS si queremos ser fancy. Vamos a hacer un ciclo CSS.
-    
-    keyframes_css = "@keyframes slideShow {\n"
-    step = 100 / len(background_images)
-    for i, img in enumerate(background_images):
-        keyframes_css += f"  {i * step}% {{ background-image: url('{img}'); }}\n"
-    keyframes_css += "}\n"
-    
-    bg_css = f"""
-    .stApp::before {{
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        {keyframes_css}
-        animation: slideShow {len(background_images) * 5}s infinite;
-        background-size: cover;
-        background-position: center;
-        background-repeat: no-repeat;
-        z-index: -1;
-        opacity: 0.8; /* Ajuste de opacidad para que se vea la imagen */
-    }}
-    .stApp::after {{
-        content: "";
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7); /* Overlay oscuro para legibilidad */
-        z-index: -1;
-    }}
-    """
-else:
-    # Fallback a negro si no hay imágenes
-    bg_css = """
-    .stApp {
-        background-color: #000000;
-    }
-    """
-
-# CSS Global (Glassmorphism + Fonts)
-st.markdown(f"""
+# --- CSS GLOBAL (GLASSMORPHISM & FUENTES) ---
+st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Share+Tech+Mono&display=swap');
+    /* Importar fuentes */
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@300;500&display=swap');
 
-    /* Fondo Dinámico */
-    {bg_css}
+    /* Fondo Simple */
+    .stApp {
+        background-color: #0e0e0e;
+    }
 
-    /* Tipografía */
-    h1, h2, h3, h4, h5, h6 {{
+    /* Textos Generales (Rajdhani) */
+    h1, h2, h3, p, div, span, input, button, label {
+        font-family: 'Rajdhani', sans-serif;
+        color: #e0e0e0;
+    }
+
+    /* Títulos Cyberpunk (Orbitron) */
+    h1, h2, h3 {
         font-family: 'Orbitron', sans-serif !important;
-        color: #00ff00 !important;
-        text-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
-    }}
-    
-    p, div, span, label, input, textarea, button {{
-        font-family: 'Share Tech Mono', monospace !important;
-        color: #e0e0e0 !important;
-    }}
+        color: #00ff41 !important;
+        text-shadow: 0 0 10px rgba(0, 255, 65, 0.6);
+        text-transform: uppercase;
+        letter-spacing: 2px;
+    }
 
-    /* Glassmorphism Containers */
-    .stChatMessage {{
-        background: rgba(20, 20, 20, 0.6);
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-        border: 1px solid rgba(0, 255, 0, 0.2);
-        border-radius: 10px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }}
-    
-    /* Input Field Glass */
-    .stTextInput input {{
-        background: rgba(0, 0, 0, 0.5) !important;
-        color: #00ff00 !important;
-        border: 1px solid rgba(0, 255, 0, 0.4) !important;
-        border-radius: 5px;
+    /* GLASSMORPHISM - Chat Messages */
+    .stChatMessage {
+        background-color: rgba(20, 20, 20, 0.7) !important;
+        border: 1px solid rgba(0, 255, 65, 0.2);
         backdrop-filter: blur(5px);
-    }}
-    
-    /* Buttons */
-    .stButton button {{
-        background: rgba(0, 50, 0, 0.6) !important;
-        color: #00ff00 !important;
-        border: 1px solid #00ff00 !important;
-        backdrop-filter: blur(5px);
+        -webkit-backdrop-filter: blur(5px);
+        border-radius: 12px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+    }
+
+    /* Estilo de Avatares (Circular) */
+    .stChatMessage img {
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid #00ff41; /* Borde sutil para destacar */
+    }
+
+    /* Inputs Transparentes */
+    .stTextInput input, .stChatInput textarea {
+        background-color: rgba(0, 0, 0, 0.6) !important;
+        color: #00ff41 !important;
+        border: 1px solid #00ff41 !important;
+    }
+    .stTextInput input:focus, .stChatInput textarea:focus {
+        box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+    }
+
+    /* Botones */
+    .stButton button {
+        background: linear-gradient(45deg, rgba(0,50,0,0.8), rgba(0,0,0,0.8)) !important;
+        border: 1px solid #00ff41 !important;
+        color: #00ff41 !important;
         transition: all 0.3s ease;
-    }}
-    .stButton button:hover {{
-        background: rgba(0, 255, 0, 0.2) !important;
-        box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
-    }}
+    }
+    .stButton button:hover {
+        background: #00ff41 !important;
+        color: #000 !important;
+        box-shadow: 0 0 20px #00ff41;
+    }
 
-    /* Ocultar elementos extra de Streamlit */
-    #MainMenu {{visibility: hidden;}}
-    footer {{visibility: hidden;}}
-    header {{visibility: hidden;}}
+    /* Iconos Material Support */
+    .material-symbols-rounded { font-family: 'Material Symbols Rounded' !important; }
 
+    /* Ocultar UI Streamlit */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    
 </style>
 """, unsafe_allow_html=True)
 
-st.title("IDENTIFICACIÓN REQUERIDA // Acceso al NÚCLEO restringido")
+
+st.title("IDENTIFICACIÓN REQUERIDA // NÚCLEO")
+
+# --- LÓGICA DE BACKEND ---
 
 # Cargar API Key
 api_key = None
@@ -144,22 +101,22 @@ if not api_key:
     api_key_input = st.sidebar.text_input("Enter Google API Key", type="password")
     if api_key_input:
         api_key = api_key_input.strip()
-    
     if not api_key:
-        st.warning("⚠ SYSTEM ERROR: API KEY REQUIRED FOR INITIALIZATION")
+        st.warning("⚠ SYSTEM ERROR: API KEY REQUIRED")
         st.stop()
 
-# Configuración cacheada de Gemini
 @st.cache_resource
 def configure_genai(api_key):
     genai.configure(api_key=api_key)
 
 configure_genai(api_key)
 
-# --- B. ESTADO DE SESIÓN (STATELESS) ---
+# Lógica de Avatares
+user_avatar = "pairImages/erika.jpeg" if os.path.exists("pairImages/erika.jpeg") else "face"
+bot_avatar = "smart_toy"
+
 if "messages" not in st.session_state:
     st.session_state.messages = []
-    # Mensaje inicial simulado
     st.session_state.messages.append({
         "role": "assistant", 
         "content": "IDENTIFICACIÓN REQUERIDA. Acceso al NÚCLEO restringido.\n\nSoy A.L.I.C.E. Protocolo de seguridad activo.\nPara desbloquear el paquete, responderás a una secuencia de verificación.\n\nFASE 1: ¿Cuándo fue vuestro primer beso? (Fecha exacta)"
@@ -168,7 +125,7 @@ if "messages" not in st.session_state:
 if "gift_unlocked" not in st.session_state:
     st.session_state.gift_unlocked = False
 
-# --- C. SYSTEM PROMPT ---
+# SYSTEM PROMPT
 system_instruction = """
 Eres A.L.I.C.E, IA de seguridad.
 Protocolo de interrogatorio secuencial (NO pases a la siguiente fase sin validar la actual):
@@ -198,37 +155,35 @@ REGLAS DE COMPORTAMIENTO:
 4. Si Erika acierta, pasa a la siguiente fase inmediatamente.
 """
 
-# --- D. INTERFAZ DE CHAT ---
-# Renderizar historial
+# INTERFAZ DE CHAT
 for message in st.session_state.messages:
-    with st.chat_message(message["role"]):
+    avatar_icon = user_avatar if message["role"] == "user" else bot_avatar
+    with st.chat_message(message["role"], avatar=avatar_icon):
         st.markdown(message["content"])
 
-# Input de usuario
 if prompt := st.chat_input("Introducir credencial..."):
-    # 0. Backdoor de desarrollador
+    # Backdoor
     if prompt == "sudo_unlock_99":
         st.session_state.gift_unlocked = True
         st.session_state.messages.append({"role": "user", "content": "sudo_unlock_99"})
         st.session_state.messages.append({"role": "assistant", "content": "BACKDOOR ACCESS GRANTED. WELCOME ADMIN."})
         st.rerun()
 
-    # 1. Mostrar mensaje usuario
-    with st.chat_message("user"):
+    # Usuario
+    with st.chat_message("user", avatar=user_avatar):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # 2. Construir historial para Gemini (Stateless format)
+    # Modelo
     gemini_history = []
     for msg in st.session_state.messages:
         role = "user" if msg["role"] == "user" else "model"
         gemini_history.append({"role": role, "parts": [msg["content"]]})
     
-    # 3. Llamada al modelo con manejo de errores manual
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=bot_avatar):
         with st.spinner("ANALYZING INPUT..."):
             try:
-                # Usamos models/gemini-2.0-flash (Serie 2.0 requerida por API Key)
+                # Usamos models/gemini-2.0-flash
                 model = genai.GenerativeModel(
                     model_name='models/gemini-2.0-flash',
                     system_instruction=system_instruction
@@ -237,16 +192,13 @@ if prompt := st.chat_input("Introducir credencial..."):
                 response = model.generate_content(gemini_history)
                 response_text = response.text
                 
-                # --- Lógica de Desbloqueo (Keyword Trigger) ---
                 if "ACCESS_LEVEL_ALPHA_UNLOCKED" in response_text:
                     st.session_state.gift_unlocked = True
-                    # Limpiamos la clave para que no se vea feo
                     response_text = response_text.replace("ACCESS_LEVEL_ALPHA_UNLOCKED", "").strip()
                 
                 st.markdown(response_text)
                 st.session_state.messages.append({"role": "assistant", "content": response_text})
                 
-                # Forzar rerun si se desbloqueó para mostrar la imagen inmediatamente
                 if st.session_state.gift_unlocked:
                     st.rerun()
 
@@ -254,19 +206,30 @@ if prompt := st.chat_input("Introducir credencial..."):
                 st.markdown("---")
                 st.warning("⚠ CONNECTION LOST")
                 st.error(f"Error del sistema: {e}")
-                st.markdown("El servidor ha rechazado la conexión. Por favor reintentar manualmente.")
                 if st.button("REESTABLECER ENLACE"):
                     st.rerun()
 
-# --- E. LÓGICA DE RENDERIZADO (DESBLOQUEO) ---
+# RENDERIZADO DESBLOQUEO
 if st.session_state.gift_unlocked:
     st.markdown("---")
-    st.success("🔓 SYSTEM OVERRIDE SUCCESSFUL. ARCHIVOS DESENCRIPTADOS.")
+    st.markdown("""
+    <div style="
+        border: 2px solid #00ff41;
+        padding: 20px;
+        border-radius: 15px;
+        background: rgba(0,0,0,0.8);
+        text-align: center;
+        box-shadow: 0 0 30px rgba(0, 255, 65, 0.5);
+    ">
+        <h2 style="margin-bottom: 10px;">🔓 ACCESS GRANTED</h2>
+        <p style="color: #fff;">DESENCRIPTACIÓN COMPLETADA. DISFRUTEN LA MISIÓN.</p>
+    </div>
+    """, unsafe_allow_html=True)
     
     image_path = "images/JumpYard.jpg"
     if os.path.exists(image_path):
         image = Image.open(image_path)
-        st.image(image, caption="JUMP YARD ACCESS PASS // TIER 1 AUTHORIZATION", use_container_width=True)
+        st.image(image, use_container_width=True)
         st.balloons()
     else:
         st.error(f"FATAL ERROR: Archivo {image_path} corroído o no encontrado.")

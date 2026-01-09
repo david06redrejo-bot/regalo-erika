@@ -2,10 +2,28 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 import os
-import random
 
 # --- A. CONFIGURACIÓN E INICIALIZACIÓN ---
 st.set_page_config(page_title="SYSTEM LOCKED // PROTOCOL MARCH", page_icon="🔒", layout="centered")
+
+# --- FUNCIONES AUXILIARES ---
+def get_avatar(role):
+    """
+    Carga el avatar de manera robusta usando PIL para evitar errores de Streamlit.
+    Devuelve un objeto Image si existe el archivo, o un string de icono si no.
+    """
+    if role == "user":
+        # Intentar cargar avatar personalizado de Erika
+        img_path = os.path.join("pairImages", "erika.jpeg")
+        if os.path.exists(img_path):
+            try:
+                return Image.open(img_path)
+            except Exception:
+                return "face" # Fallback si la imagen está corrupta
+        return "face" # Fallback si no existe archivo
+    
+    # Avatar del Bot
+    return "smart_toy"
 
 # --- CSS GLOBAL (GLASSMORPHISM & FUENTES) ---
 st.markdown("""
@@ -48,6 +66,7 @@ st.markdown("""
         border-radius: 50%;
         object-fit: cover;
         border: 2px solid #00ff41; /* Borde sutil para destacar */
+        aspect-ratio: 1 / 1; /* Asegurar proporción cuadrada */
     }
 
     /* Inputs Transparentes */
@@ -111,10 +130,6 @@ def configure_genai(api_key):
 
 configure_genai(api_key)
 
-# Lógica de Avatares
-user_avatar = "pairImages/erika.jpeg" if os.path.exists("pairImages/erika.jpeg") else "face"
-bot_avatar = "smart_toy"
-
 if "messages" not in st.session_state:
     st.session_state.messages = []
     st.session_state.messages.append({
@@ -157,8 +172,9 @@ REGLAS DE COMPORTAMIENTO:
 
 # INTERFAZ DE CHAT
 for message in st.session_state.messages:
-    avatar_icon = user_avatar if message["role"] == "user" else bot_avatar
-    with st.chat_message(message["role"], avatar=avatar_icon):
+    # Obtener avatar dinámicamente usando la función robusta
+    avatar_obj = get_avatar(message["role"])
+    with st.chat_message(message["role"], avatar=avatar_obj):
         st.markdown(message["content"])
 
 if prompt := st.chat_input("Introducir credencial..."):
@@ -170,17 +186,18 @@ if prompt := st.chat_input("Introducir credencial..."):
         st.rerun()
 
     # Usuario
-    with st.chat_message("user", avatar=user_avatar):
+    with st.chat_message("user", avatar=get_avatar("user")):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
     
-    # Modelo
+    # Construcción de Historial Stateless
     gemini_history = []
     for msg in st.session_state.messages:
         role = "user" if msg["role"] == "user" else "model"
         gemini_history.append({"role": role, "parts": [msg["content"]]})
     
-    with st.chat_message("assistant", avatar=bot_avatar):
+    # Respuesta Modelo
+    with st.chat_message("assistant", avatar=get_avatar("assistant")):
         with st.spinner("ANALYZING INPUT..."):
             try:
                 # Usamos models/gemini-2.0-flash
@@ -226,7 +243,9 @@ if st.session_state.gift_unlocked:
     </div>
     """, unsafe_allow_html=True)
     
+    # Corrección OBLIGATORIA: Usar extensión .jpg
     image_path = "images/JumpYard.jpg"
+    
     if os.path.exists(image_path):
         image = Image.open(image_path)
         st.image(image, use_container_width=True)

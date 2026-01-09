@@ -6,25 +6,6 @@ import os
 # --- A. CONFIGURACIÓN E INICIALIZACIÓN ---
 st.set_page_config(page_title="SYSTEM LOCKED // PROTOCOL MARCH", page_icon="🔒", layout="centered")
 
-# --- FUNCIONES AUXILIARES ---
-def get_avatar(role):
-    """
-    Carga el avatar de manera robusta usando PIL para evitar errores de Streamlit.
-    Devuelve un objeto Image si existe el archivo, o un string de icono si no.
-    """
-    if role == "user":
-        # Intentar cargar avatar personalizado de Erika
-        img_path = os.path.join("pairImages", "erika.jpeg")
-        if os.path.exists(img_path):
-            try:
-                return Image.open(img_path)
-            except Exception:
-                return "face" # Fallback si la imagen está corrupta
-        return "face" # Fallback si no existe archivo
-    
-    # Avatar del Bot
-    return "smart_toy"
-
 # --- CSS GLOBAL (GLASSMORPHISM & FUENTES) ---
 st.markdown("""
 <style>
@@ -59,14 +40,6 @@ st.markdown("""
         -webkit-backdrop-filter: blur(5px);
         border-radius: 12px;
         box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
-    }
-
-    /* Estilo de Avatares (Circular) */
-    .stChatMessage img {
-        border-radius: 50%;
-        object-fit: cover;
-        border: 2px solid #00ff41; /* Borde sutil para destacar */
-        aspect-ratio: 1 / 1; /* Asegurar proporción cuadrada */
     }
 
     /* Inputs Transparentes */
@@ -172,9 +145,8 @@ REGLAS DE COMPORTAMIENTO:
 
 # INTERFAZ DE CHAT
 for message in st.session_state.messages:
-    # Obtener avatar dinámicamente usando la función robusta
-    avatar_obj = get_avatar(message["role"])
-    with st.chat_message(message["role"], avatar=avatar_obj):
+    # Usar comportamiento por defecto de Streamlit (iconos)
+    with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
 if prompt := st.chat_input("Introducir credencial..."):
@@ -186,7 +158,7 @@ if prompt := st.chat_input("Introducir credencial..."):
         st.rerun()
 
     # Usuario
-    with st.chat_message("user", avatar=get_avatar("user")):
+    with st.chat_message("user"):
         st.markdown(prompt)
     st.session_state.messages.append({"role": "user", "content": prompt})
     
@@ -197,7 +169,7 @@ if prompt := st.chat_input("Introducir credencial..."):
         gemini_history.append({"role": role, "parts": [msg["content"]]})
     
     # Respuesta Modelo
-    with st.chat_message("assistant", avatar=get_avatar("assistant")):
+    with st.chat_message("assistant"):
         with st.spinner("ANALYZING INPUT..."):
             try:
                 # Usamos models/gemini-2.0-flash

@@ -9,7 +9,7 @@ Description
 - Purpose: Provide quick, interactive gift suggestions through a Streamlit web UI.
 - Language: Python (100%).
 
-Live demo
+Live demo: https://regalo-erika.streamlit.app/
 
 This project is deployed with Streamlit. If you have a deployed app URL, add it here:
 
